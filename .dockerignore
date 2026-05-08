@@ -1,26 +1,50 @@
+# ── The single most important line: exclude node_modules ──────────────────
+**/node_modules
 node_modules
+
+# Build output — rebuilt inside Docker
 dist
 build
-coverage
-.nyc_output
 
+# Git
 .git
 .gitignore
-.vscode
+.gitattributes
 
+# IDE / OS
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Tests & coverage
+coverage
+.nyc_output
+test/
+
+# Env files — injected at runtime
+.env
+.env.*
+
+# Docker files
+Dockerfile
+Dockerfile.*
+.dockerignore
+docker-compose*.yml
+
+# Docs / tooling
 *.md
 .prettierrc
 eslint.config.mjs
 
-# env files — injected at runtime via docker-compose / k8s secrets
-.env
-.env.*
-
-# tests
-test/
-
-# Docker files themselves (no recursive copy needed)
-Dockerfile
-.dockerignore
-docker-compose*.yml
+# Temp
+.temp
+.tmp
+*.pid
+*.seed
