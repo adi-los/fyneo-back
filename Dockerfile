@@ -14,13 +14,14 @@ COPY package.json yarn.lock ./
 
 # Install ALL deps (dev included — @nestjs/cli needed for nest build)
 # --ignore-engines: safety net for any engine version mismatches
-# --cache-folder:   fresh temp cache to avoid EUCLEAN on CI hosts
-RUN yarn install \
+# --cache-folder:   use /app/.yarn-cache (same layer) to avoid CI I/O errors on /tmp
+RUN mkdir -p /app/.yarn-cache && \
+    yarn install \
       --frozen-lockfile \
       --ignore-engines \
       --network-timeout 300000 \
-      --cache-folder /tmp/.yarn-cache \
- && rm -rf /tmp/.yarn-cache
+      --cache-folder /app/.yarn-cache \
+ && rm -rf /app/.yarn-cache
 
 # Copy source after install — maximises layer cache reuse
 COPY . .
@@ -47,13 +48,14 @@ ENV NODE_ENV=production
 
 # Production-only deps with isolated cache
 COPY --chown=nestjs:nestjs package.json yarn.lock ./
-RUN yarn install \
+RUN mkdir -p /app/.yarn-cache && \
+    yarn install \
       --frozen-lockfile \
       --production \
       --ignore-engines \
       --network-timeout 300000 \
-      --cache-folder /tmp/.yarn-cache \
- && rm -rf /tmp/.yarn-cache
+      --cache-folder /app/.yarn-cache \
+ && rm -rf /app/.yarn-cache
 
 # Compiled output
 COPY --from=builder --chown=nestjs:nestjs /app/dist ./dist
