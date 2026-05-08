@@ -1,23 +1,60 @@
-version: '3.8'
+version: '3.9'
 
 services:
+
+  # ── PostgreSQL ────────────────────────────────────────────────────────────
   db:
     image: postgres:16-alpine
+    container_name: fyneo_db
+    restart: unless-stopped
     ports:
-      - "5438:5432"
+      - "5438:5432"           # host:container — matches local dev default
     environment:
-      POSTGRES_USER: fyneo
-      POSTGRES_PASSWORD: fyneo
-      POSTGRES_DB: fyneo
+      POSTGRES_USER:     ${DB_USER:-fyneo}
+      POSTGRES_PASSWORD: ${DB_PASS:-fyneo}
+      POSTGRES_DB:       ${DB_NAME:-fyneo}
     volumes:
       - pg_data:/var/lib/postgresql/data
-      - ./database/schema:/docker-entrypoint-initdb.d
+      - ./database/schema:/docker-entrypoint-initdb.d   # SQL files run once on first init
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-fyneo} -d ${DB_NAME:-fyneo}"]
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 10s
+
+  # ── NestJS Backend ────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fyneo_backend
     restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${PORT:-4000}:4000"
+    environment:
+      NODE_ENV:    production
+      PORT:        4000
+      DB_HOST:     db                          # service name inside compose network
+      DB_PORT:     5432                        # internal postgres port
+      DB_USER:     ${DB_USER:-fyneo}
+      DB_PASS:     ${DB_PASS:-fyneo}
+      DB_NAME:     ${DB_NAME:-fyneo}
+      JWT_SECRET:  ${JWT_SECRET:-change_me_in_production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+    env_file:
+      - path: .env
+        required: false                        # won't fail if .env doesn't exist
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4000/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
 volumes:
   pg_data:
+    driver: local

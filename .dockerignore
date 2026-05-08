@@ -1,0 +1,26 @@
+node_modules
+dist
+build
+coverage
+.nyc_output
+
+.git
+.gitignore
+.vscode
+
+*.log
+*.md
+.prettierrc
+eslint.config.mjs
+
+# env files — injected at runtime via docker-compose / k8s secrets
+.env
+.env.*
+
+# tests
+test/
+
+# Docker files themselves (no recursive copy needed)
+Dockerfile
+.dockerignore
+docker-compose*.yml
