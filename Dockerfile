@@ -1,28 +1,35 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Stage 1 — builder: install deps + compile TypeScript
+# Fyneo — NestJS Backend
+# Two-stage build: builder compiles TS → dist/, runner runs prod node_modules.
 # ─────────────────────────────────────────────────────────────────────────────
+
+# ── Stage 1 · builder ─────────────────────────────────────────────────────────
 FROM node:20-alpine AS builder
 
 RUN apk add --no-cache libc6-compat
 
 WORKDIR /app
 
-# Copy manifests first — layer cache friendly
 COPY package.json yarn.lock ./
 
-# Install ALL deps (dev included — needed for nest build / tsc)
-RUN yarn install --frozen-lockfile
+# Install ALL deps (dev included — @nestjs/cli needed for nest build)
+# --ignore-engines: safety net for any engine version mismatches
+# --cache-folder:   fresh temp cache to avoid EUCLEAN on CI hosts
+RUN yarn install \
+      --frozen-lockfile \
+      --ignore-engines \
+      --network-timeout 300000 \
+      --cache-folder /tmp/.yarn-cache \
+ && rm -rf /tmp/.yarn-cache
 
-# Copy source (node_modules excluded via .dockerignore)
+# Copy source after install — maximises layer cache reuse
 COPY . .
 
-# Compile: nest build → dist/
+# Compile TypeScript → dist/
 RUN yarn build
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Stage 2 — runner: lean production image
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Stage 2 · runner ──────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 
 LABEL maintainer="fyneo"
@@ -38,20 +45,24 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Install production-only dependencies
+# Production-only deps with isolated cache
 COPY --chown=nestjs:nestjs package.json yarn.lock ./
-RUN yarn install --frozen-lockfile --production \
- && yarn cache clean
+RUN yarn install \
+      --frozen-lockfile \
+      --production \
+      --ignore-engines \
+      --network-timeout 300000 \
+      --cache-folder /tmp/.yarn-cache \
+ && rm -rf /tmp/.yarn-cache
 
-# Copy compiled output from builder
+# Compiled output
 COPY --from=builder --chown=nestjs:nestjs /app/dist ./dist
 
-# Copy NestJS CLI config (needed for module resolution at runtime)
+# NestJS CLI config (needed for module resolution at runtime)
 COPY --chown=nestjs:nestjs nest-cli.json ./
 
 USER nestjs
 
-# Backend listens on 4000 by default (main.ts → process.env.PORT ?? 4000)
 EXPOSE 4000
 
 CMD ["node", "dist/main"]
