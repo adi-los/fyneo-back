@@ -1,0 +1,31 @@
+CREATE TABLE public.customer (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL,
+  customer_code VARCHAR(50) UNIQUE,
+  type public.entity_type_enum,
+  company_name VARCHAR(255),
+  ice VARCHAR(50),
+  rc VARCHAR(50),
+  tax_id VARCHAR(50),
+  first_name VARCHAR(100),
+  last_name VARCHAR(100),
+  email VARCHAR(255),
+  phone VARCHAR(50),
+  mobile VARCHAR(50),
+  website VARCHAR(255),
+  address TEXT,
+  city VARCHAR(100),
+  country VARCHAR(100),
+  sector VARCHAR(100),
+  notes TEXT,
+  payment_terms VARCHAR(50),
+  credit_limit NUMERIC(12,2),
+  currency VARCHAR(10),
+  status public.status_enum DEFAULT 'active',
+  created_by UUID,
+  updated_by UUID,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_customer_org ON public.customer(organization_id);
